@@ -2,17 +2,17 @@ package com.example.maps;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.location.Location;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.PersistableBundle;
 import android.provider.Settings;
-import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -21,7 +21,6 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
@@ -36,6 +35,7 @@ import com.karumi.dexter.listener.single.PermissionListener;
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
+    private static final int GPS_REQUEST_CODE = 9001;
     private boolean isPermissionGranted;
     private GoogleMap mGoogleMap;
     private FloatingActionButton fab;
@@ -84,10 +84,33 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void initMap() {
         if (isPermissionGranted) {
-            SupportMapFragment supportMapFragment = (SupportMapFragment) getSupportFragmentManager()
-                    .findFragmentById(R.id.fragment);
-            supportMapFragment.getMapAsync(this);
+            if (isGPSEnabled()) {
+                SupportMapFragment supportMapFragment = (SupportMapFragment) getSupportFragmentManager()
+                        .findFragmentById(R.id.fragment);
+                supportMapFragment.getMapAsync(this);
+            }
         }
+    }
+
+    private boolean isGPSEnabled() {
+        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+
+        boolean providerEnable = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+
+        if (providerEnable) {
+            return true;
+        } else {
+            AlertDialog alertDialog = new AlertDialog.Builder(this)
+                    .setTitle("GPS Permission")
+                    .setMessage("Enable GPS...")
+                    .setPositiveButton("Yes", ((dialogInterface, i) -> {
+                        Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                        startActivityForResult(intent, GPS_REQUEST_CODE);
+                    })).setCancelable(false)
+                    .show();
+        }
+
+        return false;
     }
 
     private void checkPermission() {
@@ -123,7 +146,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mGoogleMap = googleMap;
-//        mGoogleMap.setMyLocationEnabled(true);
+        mGoogleMap.setMyLocationEnabled(true);
     }
 
 
@@ -139,6 +162,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
+    }
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == GPS_REQUEST_CODE) {
+            LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+
+            boolean providerEnable = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+
+            if(providerEnable){
+                Toast.makeText(this, "GPS enabled", Toast.LENGTH_SHORT).show();
+            }else {
+                Toast.makeText(this, "GPS not enabled", Toast.LENGTH_SHORT).show();
+            }
+
+        }
 
     }
 }
